@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: medicojobs
+  labels:
+    app.kubernetes.io/name: medicojobs
+    app.kubernetes.io/part-of: medicojobs-platform

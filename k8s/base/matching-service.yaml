@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: matching-service
+  namespace: medicojobs
+  labels: &matchingLabels
+    app.kubernetes.io/name: matching-service
+    app.kubernetes.io/part-of: medicojobs-platform
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels: *matchingLabels
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels: *matchingLabels
+    spec:
+      containers:
+        - name: matching-service
+          image: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-matching-service:latest
+          ports:
+            - containerPort: 5003
+          envFrom:
+            - configMapRef:
+                name: medicojobs-config
+            - secretRef:
+                name: medicojobs-secrets
+                optional: true
+          readinessProbe:
+            tcpSocket:
+              port: 5003
+          livenessProbe:
+            tcpSocket:
+              port: 5003
+          resources:
+            requests:
+              cpu: 75m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: matching-service
+  namespace: medicojobs
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: matching-service
+    app.kubernetes.io/part-of: medicojobs-platform
+  ports:
+    - name: http
+      port: 5003
+      targetPort: 5003

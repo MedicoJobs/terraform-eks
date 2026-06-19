@@ -1,0 +1,4 @@
+repoURL: https://github.com/your-org/medicojobs.git
+targetRevision: main
+path: terraform-eks/k8s/overlays/prod
+destinationNamespace: medicojobs

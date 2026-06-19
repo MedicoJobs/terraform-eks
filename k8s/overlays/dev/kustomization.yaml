@@ -1,0 +1,50 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: medicojobs-dev
+resources:
+  - ../../base
+images:
+  - name: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-api-gateway
+    newName: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-api-gateway
+    newTag: latest
+  - name: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-frontend
+    newName: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-frontend
+    newTag: latest
+  - name: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-user-service
+    newName: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-user-service
+    newTag: latest
+  - name: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-job-service
+    newName: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-job-service
+    newTag: latest
+  - name: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-matching-service
+    newName: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-matching-service
+    newTag: latest
+  - name: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-availability-service
+    newName: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-availability-service
+    newTag: latest
+  - name: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-location-service
+    newName: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-location-service
+    newTag: latest
+  - name: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-reputation-service
+    newName: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-reputation-service
+    newTag: latest
+  - name: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-course-service
+    newName: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-course-service
+    newTag: latest
+  - name: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-resume-service
+    newName: 123456789012.dkr.ecr.ap-south-1.amazonaws.com/medicojob-resume-service
+    newTag: latest
+patches:
+  - target:
+      kind: Ingress
+      name: medicojobs-alb
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/alb.ingress.kubernetes.io~1certificate-arn
+        value: arn:aws:acm:ap-south-1:123456789012:certificate/replace-me
+      - op: replace
+        path: /metadata/annotations/external-dns.alpha.kubernetes.io~1hostname
+        value: dev.medicojobs.example.com
+      - op: replace
+        path: /spec/rules/0/host
+        value: dev.medicojobs.example.com
