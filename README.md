@@ -1,23 +1,10 @@
 # MedicoJobs Production EKS Deployment
 
-This folder provisions and deploys MedicoJobs on Amazon EKS using Terraform, Helm, Kubernetes manifests, and ArgoCD GitOps.
+This folder provisions MedicoJobs on Amazon EKS using Terraform, Helm, and Argo CD GitOps.
 
-## Architecture
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the Route 53 -> CloudFront -> WAF -> ALB -> EKS request flow.
 
-Traffic flow:
-
-```text
-User
-  -> Route53
-  -> AWS Application Load Balancer
-  -> Kubernetes Gateway API / ALB Ingress
-  -> ClusterIP Service
-  -> Application Pods
-  -> Backend Services
-  -> Database / Cache / External Services
-```
-
-## Terraform Structure
+## Structure
 
 ```text
 terraform-eks/
@@ -25,113 +12,92 @@ terraform-eks/
   provider.tf
   variables.tf
   output.tf
-  acm.tf
-  addons.tf
-  argocd_application.tf
   moved.tf
   modules/
+    acm/
+    addons/
+    ecr/
+    eks/
+    route53/
     vpc/
     subnets/
     internet-gateway/
     nat-gateway/
     route-tables/
-    eks/
-    ecr/
   charts/
-    argocd-app/
-  k8s/
-    base/
-    overlays/prod/
-    argocd/
+    argocd-app/        # Terraform-installed bootstrap Argo CD Application
+  helm/
+    app-of-apps/       # Root Argo CD app-of-apps chart
+    apps/
+      platform/        # Namespace, ConfigMap, ALB Ingress, HPA, PDB
+      api-gateway/
+      frontend/
+      user-service/
+      job-service/
+      matching-service/
+      availability-service/
+      location-service/
+      reputation-service/
+      course-service/
+      resume-service/
   scripts/
     push-all-images.ps1
 ```
 
 ## What Terraform Creates
 
-- VPC, public subnets, private subnets
-- Internet Gateway, NAT Gateway, route tables
-- Amazon EKS cluster
-- Managed node group with 2 worker nodes
+- VPC, public/private subnets, NAT, route tables
+- EKS cluster and managed node group
 - ECR repositories
-- Optional ACM certificate and DNS validation
-- IAM OIDC provider for IRSA
-- IRSA roles for:
-  - AWS Load Balancer Controller
-  - ExternalDNS
-  - CloudWatch agent
-- Helm add-ons:
-  - AWS Load Balancer Controller
-  - metrics-server
-  - kube-prometheus-stack
-  - Grafana
-  - ArgoCD
-  - ExternalDNS
-  - CloudWatch Observability / Container Insights
+- Optional Route53/ACM
+- AWS Load Balancer Controller, ExternalDNS, metrics-server, monitoring, Argo CD, CloudWatch, EBS CSI
+- Argo CD bootstrap Application pointing to `app-of-apps`
 
-## Kubernetes Manifests
+## GitOps Model
 
-The app manifests are in:
+Terraform installs only the bootstrap Application from `charts/argocd-app`.
+That Application syncs the Helm chart at:
 
 ```text
-k8s/base
-k8s/overlays/prod
+app-of-apps
 ```
 
-They include:
+The app-of-apps chart creates one child Argo CD Application for each folder under:
 
-- Namespace
-- ConfigMap
-- Secret example
-- Deployments
-- ClusterIP Services
-- Horizontal Pod Autoscalers
-- Pod Disruption Budgets
-- ALB Ingress
-- GatewayClass
-- Gateway
-- HTTPRoute
-- ArgoCD Application
-
-## Important Before Apply
-
-If Terraform shows destroy/create after module refactoring, do not approve it blindly. This repo includes `moved.tf` to map old resource addresses into the new module structure. Run:
-
-```powershell
-terraform plan
+```text
+apps/<service-name>
 ```
 
-Check that existing resources are shown as moved or updated, not destroyed and recreated.
+Each microservice owns its own Helm values file, for example:
+
+```text
+apps/frontend/values.yaml
+apps/api-gateway/values.yaml
+apps/resume-service/values.yaml
+```
+
+CI updates `.image.repository` and `.image.tag` inside the matching service `values.yaml` after Docker build, Trivy scan, and ECR push pass.
 
 ## Configure Variables
 
-```powershell
-cd terraform-eks
-Copy-Item terraform.tfvars.example terraform.tfvars
-```
-
-Edit:
+In `terraform.tfvars`:
 
 ```hcl
-domain_name         = "medicojobs.example.com"
-hosted_zone_id      = "YOUR_ROUTE53_ZONE_ID"
-acm_certificate_arn = "YOUR_ACM_CERTIFICATE_ARN"
-
-argocd_git_repo_url = "https://github.com/your-org/medicojobs.git"
+argocd_git_repo_url = "https://github.com/MedicoJobs/Helm.git"
 argocd_git_revision = "main"
-argocd_app_path     = "terraform-eks/k8s/overlays/prod"
+argocd_app_path     = "app-of-apps"
+
+domain_name         = "medicojobs.online"
+route53_zone_name   = "medicojobs.online"
 ```
 
-If you want Terraform to create the ACM certificate:
+SonarCloud is used from GitHub Actions, so Terraform does not install a SonarQube server by default:
 
 ```hcl
-create_acm_certificate = true
-domain_name            = "medicojobs.example.com"
-hosted_zone_id         = "YOUR_ROUTE53_ZONE_ID"
-acm_certificate_arn    = ""
+sonarqube_enabled = false
 ```
 
-## Provision Infrastructure
+## Apply
 
 ```powershell
 terraform init
@@ -148,54 +114,7 @@ aws eks update-kubeconfig --region ap-south-1 --name medicojobs-cluster
 kubectl get nodes
 ```
 
-## Push Images to ECR
-
-Docker must be installed and running.
-
-```powershell
-cd terraform-eks
-.\scripts\push-all-images.ps1 -Region ap-south-1 -Tag latest -FrontendApiUrl "https://medicojobs.example.com"
-```
-
-## Configure Application Images
-
-Edit `k8s/overlays/prod/kustomization.yaml` and replace:
-
-```text
-123456789012.dkr.ecr.ap-south-1.amazonaws.com
-```
-
-with your real AWS account ECR registry.
-
-Update:
-
-```yaml
-newTag: latest
-```
-
-to a versioned tag such as:
-
-```yaml
-newTag: v1.0.0
-```
-
-## Configure Secrets
-
-Create the real secret from the example:
-
-```powershell
-Copy-Item k8s/base/secret.example.yaml k8s/overlays/prod/secret.yaml
-```
-
-Replace all `replace-me` values. For production, prefer AWS Secrets Manager plus External Secrets Operator instead of committing raw secrets.
-
-If you add `secret.yaml`, include it in `k8s/overlays/prod/kustomization.yaml`.
-
-## Deploy with ArgoCD
-
-Terraform installs ArgoCD and creates the ArgoCD Application automatically from `argocd_application.tf`.
-
-Check sync:
+## Verify Argo CD
 
 ```powershell
 kubectl get pods -n argocd
@@ -203,149 +122,97 @@ kubectl get applications -n argocd
 kubectl describe application medicojobs -n argocd
 ```
 
-Get initial ArgoCD admin password:
+The expected child Applications are:
 
-```powershell
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | %{ [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_)) }
-```
-
-Port-forward ArgoCD UI:
-
-```powershell
-kubectl port-forward svc/argocd-server -n argocd 8080:443
+```text
+medicojobs-platform
+medicojobs-api-gateway
+medicojobs-frontend
+medicojobs-user-service
+medicojobs-job-service
+medicojobs-matching-service
+medicojobs-availability-service
+medicojobs-location-service
+medicojobs-reputation-service
+medicojobs-course-service
+medicojobs-resume-service
 ```
 
 ## Verify Application
 
 ```powershell
-kubectl get all -n medicojobs
-kubectl get ingress -n medicojobs
-kubectl get gateway,httproute -n medicojobs
-kubectl get hpa -n medicojobs
-kubectl get pdb -n medicojobs
+kubectl get all -n medicojobs-prod
+kubectl get ingress -n medicojobs-prod
+kubectl get hpa,pdb -n medicojobs-prod
+kubectl describe ingress medicojobs-alb -n medicojobs-prod
 ```
 
-Check ALB:
+## Image Updates
 
-```powershell
-kubectl describe ingress medicojobs-alb -n medicojobs
+Update a service image manually by editing its Helm values file:
+
+```yaml
+image:
+  repository: 168614391879.dkr.ecr.ap-south-1.amazonaws.com/medicojob-frontend
+  tag: <commit-sha>
 ```
 
-Check ExternalDNS:
+Then commit and push. Argo CD will sync the change.
 
-```powershell
-kubectl logs -n external-dns deploy/external-dns
+## Secrets
+
+The Helm charts expect an optional Kubernetes Secret named:
+
+```text
+medicojobs-secrets
 ```
 
-Check AWS Load Balancer Controller:
-
-```powershell
-kubectl logs -n kube-system deploy/aws-load-balancer-controller
-```
-
-## Observability
-
-Prometheus and Grafana:
-
-```powershell
-kubectl get pods -n monitoring
-kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80
-```
-
-CloudWatch Container Insights:
-
-```powershell
-kubectl get pods -n amazon-cloudwatch
-```
-
-Then open CloudWatch Logs and Container Insights in AWS Console.
-
-## Rollback
-
-Rollback a Kubernetes deployment:
-
-```powershell
-kubectl rollout history deployment/api-gateway -n medicojobs
-kubectl rollout undo deployment/api-gateway -n medicojobs
-```
-
-Rollback with GitOps:
-
-```powershell
-git revert <bad-commit>
-git push
-```
-
-ArgoCD will sync the previous known-good manifests.
-
-Rollback image tag:
-
-```powershell
-kubectl set image deployment/api-gateway api-gateway=<ecr-url>/medicojob-api-gateway:v1.0.0 -n medicojobs
-```
-
-For GitOps production, commit the tag rollback in `k8s/overlays/prod/kustomization.yaml`.
+Create it out-of-band or manage it with AWS Secrets Manager plus External Secrets Operator. Do not commit raw production secrets.
 
 ## Troubleshooting
 
-Terraform wants to destroy/recreate resources:
-
-```powershell
-terraform state list
-terraform plan
-```
-
-Make sure `moved.tf` is present. Do not approve destructive plans unless intended.
-
-Pods not starting:
-
-```powershell
-kubectl describe pod <pod-name> -n medicojobs
-kubectl logs <pod-name> -n medicojobs
-```
-
-Image pull errors:
-
-```powershell
-kubectl describe pod <pod-name> -n medicojobs
-aws ecr describe-repositories --region ap-south-1
-```
-
-ALB not created:
-
-```powershell
-kubectl describe ingress medicojobs-alb -n medicojobs
-kubectl logs -n kube-system deploy/aws-load-balancer-controller
-```
-
-DNS not created:
-
-```powershell
-kubectl logs -n external-dns deploy/external-dns
-aws route53 list-resource-record-sets --hosted-zone-id YOUR_ZONE_ID
-```
-
-HPA not working:
-
-```powershell
-kubectl top pods -n medicojobs
-kubectl get apiservice v1beta1.metrics.k8s.io
-```
-
-ArgoCD not syncing:
+Argo CD sync:
 
 ```powershell
 kubectl describe application medicojobs -n argocd
 kubectl logs -n argocd deploy/argocd-application-controller
 ```
 
-## Production Notes
+Pods:
 
-- Use versioned image tags, not `latest`, after initial testing.
-- Store secrets in AWS Secrets Manager or External Secrets Operator.
-- Keep worker nodes in private subnets.
-- Keep app Services as ClusterIP.
-- Terminate TLS at ALB using ACM.
-- Use HTTPS redirect at ALB/Gateway.
-- Use ArgoCD as the source of truth after bootstrap.
-- Review IAM policies before production compliance review.
+```powershell
+kubectl describe pod <pod-name> -n medicojobs-prod
+kubectl logs <pod-name> -n medicojobs-prod
+```
+
+Image pull errors:
+
+```powershell
+kubectl describe pod <pod-name> -n medicojobs-prod
+aws ecr describe-images --repository-name medicojob-frontend --region ap-south-1
+```
+
+Terraform fails with `explicit deny in a service control policy`:
+
+This is an AWS Organizations permission guardrail, not a Terraform syntax error. An explicit deny in an SCP overrides IAM user, role, and AdministratorAccess permissions. The Terraform principal must be allowed by the SCP attached to the AWS account or OU before `terraform plan` or `terraform apply` can refresh resources.
+
+For this stack, the SCP must allow at least read/describe access for services Terraform manages, including:
+
+```text
+ecr:DescribeRepositories
+iam:GetOpenIDConnectProvider
+ec2:DescribeAddresses
+ec2:DescribeVpcs
+route53:GetHostedZone
+kms:DescribeKey
+```
+
+To apply infrastructure changes, also allow the corresponding create/update/delete actions used by the modules in this folder. If the deny is intentional, run Terraform from an account, OU, or assumed role that is outside that deny policy.
+
+ALB/DNS:
+
+```powershell
+kubectl describe ingress medicojobs-alb -n medicojobs-prod
+kubectl logs -n kube-system deploy/aws-load-balancer-controller
+kubectl logs -n external-dns deploy/external-dns
+```

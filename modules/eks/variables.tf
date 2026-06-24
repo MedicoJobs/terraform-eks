@@ -38,6 +38,18 @@ variable "node_max_size" {
   type        = number
 }
 
+variable "enabled_cluster_log_types" {
+  description = "EKS control plane log types to publish to CloudWatch."
+  type        = list(string)
+  default     = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+}
+
+variable "console_admin_principal_arns" {
+  description = "IAM user or role ARNs that should have EKS cluster admin access for AWS Console Kubernetes resource viewing."
+  type        = list(string)
+  default     = []
+}
+
 variable "common_tags" {
   description = "Common tags to apply to resources."
   type        = map(string)

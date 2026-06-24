@@ -1,4 +1,5 @@
-repoURL: https://github.com/your-org/medicojobs.git
+repoURL: https://github.com/MedicoJobs/Helm.git
 targetRevision: main
-path: terraform-eks/k8s/overlays/prod
-destinationNamespace: medicojobs
+path: app-of-apps
+destinationNamespace: argocd
+
