@@ -1,4 +1,5 @@
 resource "aws_subnet" "public" {
+  # trivy:ignore:AVD-AWS-0164 - Public subnets intentionally assign public IPs for Load Balancers
   count = length(var.public_subnet_cidrs)
 
   vpc_id                  = var.vpc_id
