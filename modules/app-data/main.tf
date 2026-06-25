@@ -1,4 +1,5 @@
 data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
 
 locals {
   upload_bucket_name = var.s3_bucket_name != "" ? var.s3_bucket_name : "${var.cluster_name}-uploads-${data.aws_caller_identity.current.account_id}"
@@ -76,18 +77,6 @@ resource "aws_dynamodb_table" "this" {
   })
 }
 
-resource "aws_secretsmanager_secret" "service" {
-  for_each = toset(var.service_names)
-
-  name                    = "${var.cluster_name}/${each.value}"
-  description             = "Runtime secrets for ${each.value}."
-  kms_key_id              = var.kms_key_arn
-  recovery_window_in_days = 7
-
-  tags = merge(var.common_tags, {
-    Name = "${var.cluster_name}-${each.value}"
-  })
-}
 
 resource "aws_iam_policy" "workload_data_access" {
   name        = "${var.cluster_name}-workload-data-access"
@@ -144,7 +133,7 @@ resource "aws_iam_policy" "workload_data_access" {
         Sid      = "SecretsRead"
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
-        Resource = concat([for secret in aws_secretsmanager_secret.service : secret.arn], [aws_secretsmanager_secret.shared.arn])
+        Resource = ["arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:${var.cluster_name}/*"]
       },
       {
         Sid      = "KMSUse"
@@ -165,3 +154,26 @@ resource "aws_iam_policy" "workload_data_access" {
   })
 }
 
+resource "aws_secretsmanager_secret" "shared" {
+  name                    = "${var.cluster_name}/shared-secrets"
+  recovery_window_in_days = 0
+  kms_key_id              = var.kms_key_arn
+
+  tags = merge(var.common_tags, {
+    Name = "${var.cluster_name}/shared-secrets"
+  })
+}
+
+resource "aws_secretsmanager_secret_version" "shared" {
+  secret_id = aws_secretsmanager_secret.shared.id
+  secret_string = jsonencode({
+    JWT_SECRET             = "supersecret12345"
+    MONGO_URI_AVAILABILITY = "mongodb+srv://pavi:pavi8925@cluster1.kudzvhk.mongodb.net/medicojob_availability_v2?appName=Cluster1"
+    MONGO_URI_JOB          = "mongodb+srv://pavi:pavi8925@cluster1.kudzvhk.mongodb.net/medicojob_job_v2?appName=Cluster1"
+    MONGO_URI_LOCATION     = "mongodb+srv://pavi:pavi8925@cluster1.kudzvhk.mongodb.net/medicojob_location_v2?appName=Cluster1"
+    MONGO_URI_MATCHING     = "mongodb+srv://pavi:pavi8925@cluster1.kudzvhk.mongodb.net/medicojob_matching_v2?appName=Cluster1"
+    MONGO_URI_REPUTATION   = "mongodb+srv://pavi:pavi8925@cluster1.kudzvhk.mongodb.net/medicojob_reputation_v2?appName=Cluster1"
+    MONGO_URI_USER         = "mongodb+srv://pavi:pavi8925@cluster1.kudzvhk.mongodb.net/medicojob_user_v2?appName=Cluster1"
+    DEMO_USER_PASSWORD     = "password123"
+  })
+}

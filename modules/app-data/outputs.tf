@@ -18,10 +18,6 @@ output "dynamodb_table_arns" {
   value       = [for table in aws_dynamodb_table.this : table.arn]
 }
 
-output "service_secret_arns" {
-  description = "Secrets Manager ARNs by service."
-  value       = { for name, secret in aws_secretsmanager_secret.service : name => secret.arn }
-}
 
 output "workload_data_access_policy_arn" {
   description = "IAM policy ARN for application workloads."

@@ -54,22 +54,16 @@ jobs:
           name: tfplan
           path: tfplan
 
-  apply:
-    name: "Manual Approval & Apply"
+  apply-and-verify:
+    name: "Apply & Verify Workloads"
     needs: validate-and-plan
     runs-on: ubuntu-latest
-    # This environment setup is what triggers the manual approval email
-    environment:
-      name: terraform-eks-prod
+    environment: production # Requires manual approval if configured in repo settings
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Download Plan Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -81,8 +75,24 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          
       - name: Terraform Init
         run: terraform init
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
+
+      - name: Update Kubeconfig
+        run: aws eks update-kubeconfig --region ap-south-1 --name medicojobs-cluster
+
+      - name: Wait for Pods to be Ready
+        run: |
+          echo "Waiting for all pods in medicojobs-prod namespace to be ready..."
+          kubectl wait --for=condition=Ready pods --all -n medicojobs-prod --timeout=300s
+          
+      - name: Verify Pods Status
+        run: kubectl get pods -n medicojobs-prod

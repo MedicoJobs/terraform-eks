@@ -5,8 +5,8 @@ kubernetes_version = "1.30"
 
 node_instance_types = ["t3.medium"]
 node_desired_size   = 3
-node_min_size       = 3
-node_max_size       = 3
+node_min_size       = 2
+node_max_size       = 4 
 
 eks_console_admin_principal_arns = [
   "arn:aws:iam::168614391879:user/admin"
@@ -40,6 +40,6 @@ sonarqube_enabled = false
 github_actions_allowed_branches = ["*"]
 
 cloudfront_enabled    = true
-external_alb_dns_name = "k8s-medicojobs-f8e7af1243-1302972826.ap-south-1.elb.amazonaws.com"
+external_alb_dns_name = "k8s-medicojobs-f8e7af1243-783102344.ap-south-1.elb.amazonaws.coms"
 
-alert_email_endpoints = ["devops@medicojobs.online"]
+alert_email_endpoints = ["pavithrasampath0609@gmail.com"]

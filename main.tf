@@ -161,6 +161,7 @@ module "observability" {
   common_tags         = local.common_tags
 }
 
+
 module "addons" {
   source = "./modules/addons"
 
@@ -189,3 +190,4 @@ module "addons" {
 
   depends_on = [module.eks, module.app_data]
 }
+

@@ -98,10 +98,6 @@ output "dynamodb_table_names" {
   value       = module.app_data.dynamodb_table_names
 }
 
-output "service_secret_arns" {
-  description = "Secrets Manager secret ARNs by service."
-  value       = module.app_data.service_secret_arns
-}
 
 output "workload_data_access_policy_arn" {
   description = "IAM policy ARN for EKS workloads that need DynamoDB, S3, Secrets Manager, and Bedrock."
@@ -155,6 +151,7 @@ output "route53_name_servers" {
   value       = module.route53.name_servers
 }
 
+
 output "sonarqube_internal_url" {
   description = "Internal cluster URL when opt-in self-hosted SonarQube is enabled."
   value       = module.addons.sonarqube_internal_url
@@ -164,4 +161,5 @@ output "sonarqube_public_url" {
   description = "Public URL when opt-in self-hosted SonarQube is enabled and sonarqube_host_name is configured."
   value       = module.addons.sonarqube_public_url
 }
+
 

@@ -47,3 +47,61 @@ resource "helm_release" "external_secrets" {
   depends_on = [aws_iam_role_policy_attachment.external_secrets]
 }
 
+resource "kubernetes_manifest" "cluster_secret_store" {
+  manifest = {
+    apiVersion = "external-secrets.io/v1beta1"
+    kind       = "ClusterSecretStore"
+    metadata = {
+      name = "aws-secrets"
+    }
+    spec = {
+      provider = {
+        aws = {
+          service = "SecretsManager"
+          region  = var.aws_region
+          auth = {
+            jwt = {
+              serviceAccountRef = {
+                name      = "external-secrets"
+                namespace = "external-secrets"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [helm_release.external_secrets]
+}
+
+resource "kubernetes_manifest" "medicojobs_secrets" {
+  manifest = {
+    apiVersion = "external-secrets.io/v1beta1"
+    kind       = "ExternalSecret"
+    metadata = {
+      name      = "medicojobs-secrets"
+      namespace = var.workload_namespace
+    }
+    spec = {
+      refreshInterval = "1h"
+      secretStoreRef = {
+        name = "aws-secrets"
+        kind = "ClusterSecretStore"
+      }
+      target = {
+        name           = "medicojobs-secrets"
+        creationPolicy = "Owner"
+      }
+      dataFrom = [
+        {
+          extract = {
+            key = "${var.cluster_name}/shared-secrets"
+          }
+        }
+      ]
+    }
+  }
+
+  depends_on = [kubernetes_manifest.cluster_secret_store]
+}
