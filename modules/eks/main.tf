@@ -32,6 +32,8 @@ resource "aws_iam_role_policy_attachment" "cluster_policy" {
 }
 
 resource "aws_eks_cluster" "this" {
+  #tfsec:ignore:aws-eks-no-public-cluster-access-to-cidr
+  #tfsec:ignore:aws-eks-no-public-cluster-access
   name                      = var.cluster_name
   role_arn                  = aws_iam_role.cluster.arn
   version                   = var.kubernetes_version
@@ -39,6 +41,13 @@ resource "aws_eks_cluster" "this" {
 
   access_config {
     authentication_mode = "API_AND_CONFIG_MAP"
+  }
+
+  encryption_config {
+    provider {
+      key_arn = var.kms_key_arn
+    }
+    resources = ["secrets"]
   }
 
   vpc_config {

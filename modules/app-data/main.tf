@@ -6,6 +6,35 @@ locals {
   upload_prefixes    = ["profile-images/", "resume-pdfs/", "course-videos/"]
 }
 
+resource "aws_s3_bucket" "logs" {
+  bucket        = "${local.upload_bucket_name}-logs"
+  force_destroy = true
+
+  tags = merge(var.common_tags, {
+    Name = "${local.upload_bucket_name}-logs"
+  })
+}
+
+resource "aws_s3_bucket_public_access_block" "logs" {
+  bucket                  = aws_s3_bucket.logs.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "logs" {
+  bucket = aws_s3_bucket.logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      kms_master_key_id = var.kms_key_arn
+      sse_algorithm     = "aws:kms"
+    }
+    bucket_key_enabled = true
+  }
+}
+
 resource "aws_s3_bucket" "uploads" {
   bucket        = local.upload_bucket_name
   force_destroy = true
@@ -13,6 +42,12 @@ resource "aws_s3_bucket" "uploads" {
   tags = merge(var.common_tags, {
     Name = local.upload_bucket_name
   })
+}
+
+resource "aws_s3_bucket_logging" "uploads" {
+  bucket        = aws_s3_bucket.uploads.id
+  target_bucket = aws_s3_bucket.logs.id
+  target_prefix = "log/"
 }
 
 resource "aws_s3_bucket_public_access_block" "uploads" {

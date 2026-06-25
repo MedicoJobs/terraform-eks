@@ -5,6 +5,8 @@ resource "aws_iam_role" "external_secrets" {
   tags               = var.common_tags
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_iam_policy" "external_secrets" {
   name        = "${var.cluster_name}-external-secrets-policy"
   description = "Permissions for External Secrets Operator to read AWS Secrets Manager."
@@ -14,7 +16,12 @@ resource "aws_iam_policy" "external_secrets" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret", "kms:Decrypt"]
+        Action   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.cluster_name}/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
         Resource = "*"
       }
     ]

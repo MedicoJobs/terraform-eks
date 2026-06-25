@@ -78,6 +78,7 @@ module "eks" {
   node_min_size                = var.node_min_size
   node_max_size                = var.node_max_size
   console_admin_principal_arns = var.eks_console_admin_principal_arns
+  kms_key_arn                  = module.security_kms.key_arn
   common_tags                  = local.common_tags
 
   depends_on = [module.route_tables]
@@ -104,7 +105,7 @@ module "security_kms" {
   common_tags  = local.common_tags
 }
 
-  module "app_data" {
+module "app_data" {
   source = "./modules/app-data"
 
   cluster_name         = var.cluster_name

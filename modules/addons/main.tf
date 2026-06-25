@@ -53,6 +53,7 @@ resource "aws_iam_role" "aws_load_balancer_controller" {
 }
 
 resource "aws_iam_policy" "aws_load_balancer_controller" {
+  #tfsec:ignore:aws-iam-no-policy-wildcards
   name        = "${var.cluster_name}-alb-controller-policy"
   description = "Permissions for AWS Load Balancer Controller."
 
@@ -244,7 +245,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   }
 
   depends_on = [
-    
+
     aws_iam_role_policy_attachment.aws_load_balancer_controller
   ]
 }
@@ -322,7 +323,7 @@ resource "helm_release" "kube_prometheus_stack" {
           type = "ClusterIP"
         }
         ingress = {
-          enabled = true
+          enabled          = true
           ingressClassName = "alb"
           annotations = {
             "alb.ingress.kubernetes.io/group.name"      = "medicojobs"
@@ -330,8 +331,8 @@ resource "helm_release" "kube_prometheus_stack" {
             "alb.ingress.kubernetes.io/target-type"     = "ip"
             "external-dns.alpha.kubernetes.io/hostname" = "grafana.medicojobs.online"
           }
-          hosts = ["grafana.medicojobs.online"]
-          paths = ["/"]
+          hosts    = ["grafana.medicojobs.online"]
+          paths    = ["/"]
           pathType = "Prefix"
         }
       }

@@ -54,3 +54,8 @@ variable "common_tags" {
   description = "Common tags to apply to resources."
   type        = map(string)
 }
+
+variable "kms_key_arn" {
+  description = "KMS Key ARN for EKS secret encryption."
+  type        = string
+}

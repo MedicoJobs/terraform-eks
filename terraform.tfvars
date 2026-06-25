@@ -6,7 +6,7 @@ kubernetes_version = "1.30"
 node_instance_types = ["t3.medium"]
 node_desired_size   = 3
 node_min_size       = 2
-node_max_size       = 4 
+node_max_size       = 4
 
 eks_console_admin_principal_arns = [
   "arn:aws:iam::168614391879:user/admin"
@@ -36,7 +36,7 @@ argocd_git_repo_url = "https://github.com/MedicoJobs/Helm.git"
 argocd_git_revision = "main"
 argocd_app_path     = "app-of-apps"
 
-sonarqube_enabled = false
+sonarqube_enabled               = false
 github_actions_allowed_branches = ["*"]
 
 cloudfront_enabled    = true
