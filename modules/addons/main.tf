@@ -433,8 +433,8 @@ resource "helm_release" "cloudwatch_observability" {
   }
 
   depends_on = [
-    
-    aws_iam_role_policy_attachment.cloudwatch_agent
+    aws_iam_role_policy_attachment.cloudwatch_agent,
+    helm_release.aws_load_balancer_controller
   ]
 }
 

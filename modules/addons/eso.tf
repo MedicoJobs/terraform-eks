@@ -44,7 +44,10 @@ resource "helm_release" "external_secrets" {
     value = aws_iam_role.external_secrets.arn
   }
 
-  depends_on = [aws_iam_role_policy_attachment.external_secrets]
+  depends_on = [
+    aws_iam_role_policy_attachment.external_secrets,
+    helm_release.aws_load_balancer_controller
+  ]
 }
 
 resource "null_resource" "apply_eso_manifests" {
