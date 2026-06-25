@@ -27,16 +27,17 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      - name: Run Trivy Infrastructure Scan
-        uses: aquasecurity/trivy-action@master
+      - name: Run tfsec Security Scan
+        uses: aquasecurity/tfsec-action@v1.0.3
         with:
-          scan-type: 'config'
-          hide-progress: false
-          format: 'table'
-          # exit-code '0' ensures the pipeline continues even if vulnerabilities are found
-          exit-code: '0' 
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
+          soft_fail: true
+
+      - name: Run Checkov Infrastructure Scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: terraform
+          soft_fail: true
 
       - name: Terraform Init
         run: terraform init
