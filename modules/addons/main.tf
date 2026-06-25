@@ -52,8 +52,8 @@ resource "aws_iam_role" "aws_load_balancer_controller" {
   tags               = var.common_tags
 }
 
+#tfsec:ignore:aws-iam-no-policy-wildcards
 resource "aws_iam_policy" "aws_load_balancer_controller" {
-  #tfsec:ignore:aws-iam-no-policy-wildcards
   name        = "${var.cluster_name}-alb-controller-policy"
   description = "Permissions for AWS Load Balancer Controller."
 

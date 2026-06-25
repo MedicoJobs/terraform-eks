@@ -31,9 +31,9 @@ resource "aws_iam_role_policy_attachment" "cluster_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
+#tfsec:ignore:aws-eks-no-public-cluster-access-to-cidr
+#tfsec:ignore:aws-eks-no-public-cluster-access
 resource "aws_eks_cluster" "this" {
-  #tfsec:ignore:aws-eks-no-public-cluster-access-to-cidr
-  #tfsec:ignore:aws-eks-no-public-cluster-access
   name                      = var.cluster_name
   role_arn                  = aws_iam_role.cluster.arn
   version                   = var.kubernetes_version

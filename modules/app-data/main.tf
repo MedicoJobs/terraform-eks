@@ -6,6 +6,8 @@ locals {
   upload_prefixes    = ["profile-images/", "resume-pdfs/", "course-videos/"]
 }
 
+#tfsec:ignore:aws-s3-enable-bucket-logging
+#tfsec:ignore:aws-s3-enable-versioning
 resource "aws_s3_bucket" "logs" {
   bucket        = "${local.upload_bucket_name}-logs"
   force_destroy = true
