@@ -218,3 +218,5 @@ kubectl describe ingress medicojobs-alb -n medicojobs-prod
 kubectl logs -n kube-system deploy/aws-load-balancer-controller
 kubectl logs -n external-dns deploy/external-dns
 ```
+
+
