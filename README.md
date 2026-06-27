@@ -116,6 +116,8 @@ kubectl get nodes
 
 ## Verify Argo CD
 
+
+
 ```powershell
 kubectl get pods -n argocd
 kubectl get applications -n argocd
